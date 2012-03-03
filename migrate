@@ -1,0 +1,85 @@
+HELPER_TABLE_NAME="migration_counter"
+
+REQUESTED_VERSION="$1"
+
+
+test -e ${ENV-development}-migrations.conf || { echo "config file ${ENV-development}-migrations.conf does not exist, 'setup' first to create a valid mysql user"; exit 1; }
+
+source ${ENV-development}-migrations.conf 
+
+function execute() {
+  echo "CONNECT $DATABASE; $1" | mysql -u$MYSQL_USER -p$MYSQL_PASSWD
+}
+
+echo "CREATE DATABASE IF NOT EXISTS $DATABASE;" | mysql -u$MYSQL_USER -p$MYSQL_PASSWD
+execute "CREATE TABLE IF NOT EXISTS $HELPER_TABLE_NAME ( id INT, version INT );"
+
+COUNT=$(execute "select count(*) from migration_counter \\G" | grep count | sed 's/.*:[ ]*//g') || exit 3
+
+
+if [ "$COUNT" = "0" ]
+then
+  execute "INSERT INTO $HELPER_TABLE_NAME SET id=1, version=0;" || exit 4
+fi
+
+MIGRATED_VERSION=$(execute "SELECT version FROM $HELPER_TABLE_NAME WHERE id = 1 \\G" | grep version | sed 's/.*:[ ]*//g')
+
+MAX_MIGRATION=$(ls *.migration 2>/dev/null | sort | tail -n1 | sed 's/0*\([0-9][0-9]*\).*/\1/g')
+
+test -n "$REQUESTED_VERSION" || REQUESTED_VERSION=$MAX_MIGRATION
+
+if [ $REQUESTED_VERSION -gt $MAX_MIGRATION ]
+then
+  echo "wooops ... highest migration is migration #${MAX_MIGRATION}"
+  exit 5
+fi
+
+function current_migration() {
+  MIGRATED_VERSION=$(execute "SELECT version FROM $HELPER_TABLE_NAME WHERE id = 1 \\G" | grep version | sed 's/.*:[ ]*//g')
+  echo -e "\nCurrent applied migration: $MIGRATED_VERSION\n"
+}
+
+current_migration
+if [ $REQUESTED_VERSION -gt $MIGRATED_VERSION ]
+then
+  MIGRATED_VERSION=$(( MIGRATED_VERSION + 1 ))
+  while [ $MIGRATED_VERSION -le $REQUESTED_VERSION ]
+  do
+    MIGRATION_FILE_NAME=$(ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
+    . $MIGRATION_FILE_NAME
+    echo -n "executing migration $MIGRATED_VERSION ... "
+
+    if migration_up_$(printf "%04d" $MIGRATED_VERSION) 2>&1 | grep ERROR
+    then
+      current_migration
+      exit 10
+    fi
+
+    if execute "UPDATE migration_counter SET version = $MIGRATED_VERSION" 2>&1 | grep ERROR
+    then
+      current_migration
+      exit 10
+    fi
+    echo "done"
+    MIGRATED_VERSION=$(( $MIGRATED_VERSION + 1 ))
+  done
+elif [ $REQUESTED_VERSION -lt $MIGRATED_VERSION ]
+then
+  while [ $MIGRATED_VERSION -gt $REQUESTED_VERSION ]
+  do
+    MIGRATION_FILE_NAME=$(ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
+    . $MIGRATION_FILE_NAME
+    echo -n "undoing migration $MIGRATED_VERSION ... "
+
+    if migration_down_$(printf "%04d" $MIGRATED_VERSION) 2>&1 | grep ERROR
+    then
+      exit 11
+    fi
+
+    execute "UPDATE migration_counter SET version = $(( $MIGRATED_VERSION - 1 ))"
+    echo "done"
+    MIGRATED_VERSION=$(( $MIGRATED_VERSION - 1 ))
+  done
+fi
+
+current_migration

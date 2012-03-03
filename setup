@@ -1,0 +1,87 @@
+function usage {
+  local command=$(basename $0)
+
+  cat<<EOF
+Usage: $command -U <admin_user> [-P <admin_password>] -u <user> -p <password> -d <database_name> [-v]
+
+Options:
+     -U <admin_user>     : user that has enough permissions to create a new user and grant permissions
+     -P <admin_password> : admin user password (omit if it's an account without passoword)
+     -u <user>           : user name of the new user
+     -p <password>       : password for new user
+     -d                  : name of the database you want to work with
+     -v                  : verbose
+
+
+creates a new user for the database and grants the necessary rights. If you already have 
+a user with sufficient access rights, create a file called migration.conf with the
+following content:
+
+export MYSQL_USER=<mysql user>
+export MYSQL_PASSWD=<users password>
+export DATABASE=<database you want to use>
+
+EOF
+
+}
+
+while getopts "U:P:u:p:vd:" option
+do
+  case "$option" in
+    U) admin_user="$OPTARG" ;;
+    P) admin_password="$OPTARG" ;;
+    u) user="$OPTARG" ;;
+    p) password="$OPTARG" ;;
+    d) database="$OPTARG" ;;
+    v) set -x; verbose=1 ;;
+    [?])
+      usage && err 1
+      ;;
+  esac
+done
+test -z "$verbose" && exec 2>/dev/null
+
+test -n "$admin_user"     || { usage; echo "*** Error: please provide admin user name"; exit 1; }
+test -n "$user"           || { usage; echo "*** Error: please provide user name"; exit 2; }
+test -n "$password"       || { usage; echo "*** Error: please provide user password"; exit 3; }
+test -n "$database"       || { usage; echo "*** Error: please provide a database name"; exit 4; }
+
+
+test -n "$admin_password" && PASS_ARGS="-p$password"
+
+cat<<EOF | mysql -u$admin_user $PASS_ARGS
+
+    CREATE USER '$user'@'localhost' IDENTIFIED BY '$password';
+    GRANT ALL PRIVILEGES ON *.* TO '$user'@'localhost'
+       WITH GRANT OPTION;
+
+EOF
+
+cat<<EOF>production-migrations.conf
+export MYSQL_USER=$user
+export MYSQL_PASSWD=$password
+export DATABASE=$database
+EOF
+
+cat<<EOF>development-migrations.conf
+export MYSQL_USER=$user
+export MYSQL_PASSWD=$password
+export DATABASE=${database}_development
+EOF
+
+cat<<EOF>test-migrations.conf
+export MYSQL_USER=$user
+export MYSQL_PASSWD=$password
+export DATABASE=${database}_test
+EOF
+
+cat<<EOF
+
+Config files production-migrations.conf, development-migrations.conf and test-migrations.conf successfully created
+Call 'migrate' with ENV varialbe set to either 'development' (default), production or test
+
+  ENV=test ./migrate # <- migrates the test database
+
+EOF
+
+

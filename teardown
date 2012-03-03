@@ -1,0 +1,11 @@
+for file in *migrations.conf
+do
+  . $file
+  echo -n "deleting database $DATABASE (enter to continue)"
+  read
+  echo "DROP DATABASE $DATABASE" | mysql -u$MYSQL_USER -p$MYSQL_PASSWD
+done
+
+echo -n "deleting user $MYSQL_USER (enter to continue)"
+read
+echo "DROP USER '$MYSQL_USER'@'localhost'" | mysql -u$MYSQL_USER -p$MYSQL_PASSWD
