@@ -2,7 +2,7 @@ function usage {
   local command=$(basename $0)
 
   cat<<EOF
-Usage: $command -U <admin_user> [-P <admin_password>] -u <user> -p <password> -d <database_name> [-v]
+Usage: $command -U <admin_user> [-P <admin_password>] -u <user> -p <password> -d <database_name> [-s] [-v]
 
 Options:
      -U <admin_user>     : user that has enough permissions to create a new user and grant permissions
@@ -10,6 +10,7 @@ Options:
      -u <user>           : user name of the new user
      -p <password>       : password for new user
      -d                  : name of the database you want to work with
+     -s                  : skip user creation
      -v                  : verbose
 
 
@@ -25,7 +26,7 @@ EOF
 
 }
 
-while getopts "U:P:u:p:vd:" option
+while getopts "U:P:u:p:vd:s" option
 do
   case "$option" in
     U) admin_user="$OPTARG" ;;
@@ -33,6 +34,7 @@ do
     u) user="$OPTARG" ;;
     p) password="$OPTARG" ;;
     d) database="$OPTARG" ;;
+    s) skip_user_creation="$OPTARG" ;;
     v) set -x; verbose=1 ;;
     [?])
       usage && err 1
@@ -49,6 +51,9 @@ test -n "$database"       || { usage; echo "*** Error: please provide a database
 
 test -n "$admin_password" && PASS_ARGS="-p$password"
 
+if [ -z "$skip_user_creation" ]
+then
+
 cat<<EOF | mysql -u$admin_user $PASS_ARGS
 
     CREATE USER '$user'@'localhost' IDENTIFIED BY '$password';
@@ -56,6 +61,7 @@ cat<<EOF | mysql -u$admin_user $PASS_ARGS
        WITH GRANT OPTION;
 
 EOF
+fi
 
 cat<<EOF>db-production.conf
 export MYSQL_USER=$user
