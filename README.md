@@ -22,13 +22,13 @@ Clone this repo:
     git clone git://github.com/kesselborn/mini-migrator.git
 
 create a directory (i.e. `migrations`) in your project where you want to use
-`mini-migrator`.
+`mini-migrator` and copy the files from this repository to this directory.
 
 ### Setup database / creating config files
 
 In order to setup your database you should create a dedicated user and several
 databases (one for production, one for development and one for testing). For
-this call:
+this use the `setup` script:
 
     setup -U <admin_user> [-P <admin_password>] -u <user> -p <password> -d <database_name>
 
@@ -41,11 +41,12 @@ three databases
 
 ### Create a migration
 
-Now you are ready to create your first migration:
+Now you are ready to create your first migration: Call
 
     ./create_migration <migration_name>
 
-and fill in the mysql code into the file that opens.
+and fill in the mysql code into the file that opens. Read the comments at the 
+bottom of the file for some examples.
 
 ### Execute migration
 
@@ -57,7 +58,7 @@ if you want to migrate to a specific migration, call
 
     ./migrate <num>
 
-where <num> is the number of the migration you want to migrate to.
+where `<num>` is the number of the migration you want to migrate to.
 
 By default, the `<database_name>_development` database is used. Call
 
@@ -71,7 +72,7 @@ to migrate your `production` or `test` database respectivly.
 
 ### Teardown
 
-If you want to delete the databases and the users you set up with the `setup`
-command call 
+If you want to delete the databases and the users that were created with the 
+`setup` command call 
 
     ./teardown
