@@ -79,6 +79,7 @@ EOF
 
 ${EDITOR-vi} $TMP_FILE
 
+mkdir -p schemas-and-migrations
 sed -n '/\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^ migration/,/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv undo migration end/p' $TMP_FILE > $NAME
 rm $TMP_FILE
 
