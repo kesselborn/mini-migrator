@@ -24,7 +24,7 @@ fi
 
 MIGRATED_VERSION=$(execute "SELECT version FROM $HELPER_TABLE_NAME WHERE id = 1 \\G" | grep version | sed 's/.*:[ ]*//g')
 
-MAX_MIGRATION=$(cd migrations; ls *.migration 2>/dev/null | sort | tail -n1 | sed 's/0*\([0-9][0-9]*\).*/\1/g')
+MAX_MIGRATION=$(cd schemas-and-migrations; ls *.migration 2>/dev/null | sort | tail -n1 | sed 's/0*\([0-9][0-9]*\).*/\1/g')
 
 test -n "$REQUESTED_VERSION" || REQUESTED_VERSION=$MAX_MIGRATION
 
@@ -35,7 +35,7 @@ then
 fi
 
 function parse_file() {
-  file_name=migrations/$1
+  file_name=schemas-and-migrations/$1
 
   up_cmd=$(sed -n '/\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^ migration/,/\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^ migration end/p' $file_name | grep -v '\^\^\^' | tr "\n" " ")
   down_cmd=$(sed -n '/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv undo migration/,/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv undo migration end/p' $file_name | grep -v "vvv" | tr "\n" " ")
@@ -52,7 +52,7 @@ then
   MIGRATED_VERSION=$(( MIGRATED_VERSION + 1 ))
   while [ $MIGRATED_VERSION -le $REQUESTED_VERSION ]
   do
-    MIGRATION_FILE_NAME=$(cd migrations; ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
+    MIGRATION_FILE_NAME=$(cd schemas-and-migrations; ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
     parse_file $MIGRATION_FILE_NAME
     echo -n "executing migration $MIGRATED_VERSION ... "
 
@@ -76,7 +76,7 @@ elif [ $REQUESTED_VERSION -lt $MIGRATED_VERSION ]
 then
   while [ $MIGRATED_VERSION -gt $REQUESTED_VERSION ]
   do
-    MIGRATION_FILE_NAME=$(cd migrations; ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
+    MIGRATION_FILE_NAME=$(cd schemas-and-migrations; ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
     parse_file $MIGRATION_FILE_NAME
     echo -n "undoing migration $MIGRATED_VERSION ... "
 
@@ -93,5 +93,5 @@ then
   current_migration
 fi
 
-mkdir -p migrations
-mysqldump -u$MYSQL_USER -p$MYSQL_PASSWD $DATABASE --no-data=true --add-drop-table=false > migrations/db_${ENV-production}.schema
+mkdir -p schemas-and-migrations
+mysqldump -u$MYSQL_USER -p$MYSQL_PASSWD $DATABASE --no-data=true --add-drop-table=false > schemas-and-migrations/db_${ENV-production}.schema
