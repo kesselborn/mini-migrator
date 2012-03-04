@@ -8,12 +8,12 @@ EOF
 exit 1
 fi
 
-LATEST=$(ls *.migration 2>/dev/null | sort | tail -n1 | sed 's/0*\([0-9][0-9]*\).*/\1/g')
+LATEST=$(cd migrations; ls *.migration 2>/dev/null | sort | tail -n1 | sed 's/0*\([0-9][0-9]*\).*/\1/g')
 test -n "$LATEST" || LATEST=0
 
 CURRENT=$(( $LATEST + 1 ))
 
-NAME=$(printf "%04d-$1.migration" $CURRENT)
+NAME=migrations/$(printf "%04d-$1.migration" $CURRENT)
 TMP_FILE=$(mktemp /tmp/migration.XXXXXXXXXXX)
 
 cat<<EOF>>$TMP_FILE
@@ -50,7 +50,7 @@ up:
 
 down: 
 
-    DROP TABLE foo
+    DROP TABLE foo;
 
 
 **** Add new column to table:
@@ -63,10 +63,23 @@ down:
     
     ALTER TABLE foo DROP COLUMN address;
 
+**** Create an index on a column (see http://dev.mysql.com/doc/refman/5.0/en/create-index.html)
+
+up:
+
+    CREATE INDEX index_foo_address
+      ON foo (address);
+
+down:
+
+    DROP INDEX index_foo_address
+      ON foo;
+
 EOF
 
 ${EDITOR-vi} $TMP_FILE
 
 sed -n '/\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^ migration/,/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv undo migration end/p' $TMP_FILE > $NAME
+rm $TMP_FILE
 
 echo Successfully create migration $NAME

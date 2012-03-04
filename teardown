@@ -1,4 +1,4 @@
-for file in *migrations.conf
+for file in db*.conf
 do
   . $file
   echo -n "deleting database $DATABASE (enter to continue)"

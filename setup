@@ -57,19 +57,19 @@ cat<<EOF | mysql -u$admin_user $PASS_ARGS
 
 EOF
 
-cat<<EOF>production-migrations.conf
+cat<<EOF>db-production.conf
 export MYSQL_USER=$user
 export MYSQL_PASSWD=$password
 export DATABASE=$database
 EOF
 
-cat<<EOF>development-migrations.conf
+cat<<EOF>db-development.conf
 export MYSQL_USER=$user
 export MYSQL_PASSWD=$password
 export DATABASE=${database}_development
 EOF
 
-cat<<EOF>test-migrations.conf
+cat<<EOF>db-test.conf
 export MYSQL_USER=$user
 export MYSQL_PASSWD=$password
 export DATABASE=${database}_test
@@ -77,7 +77,7 @@ EOF
 
 cat<<EOF
 
-Config files production-migrations.conf, development-migrations.conf and test-migrations.conf successfully created
+Config files db-production.conf, db-development.conf and db-test.conf successfully created
 Call 'migrate' with ENV varialbe set to either 'development' (default), production or test
 
   ENV=test ./migrate # <- migrates the test database

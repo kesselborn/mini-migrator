@@ -3,9 +3,9 @@ HELPER_TABLE_NAME="migration_counter"
 REQUESTED_VERSION="$1"
 
 
-test -e ${ENV-development}-migrations.conf || { echo "config file ${ENV-development}-migrations.conf does not exist, 'setup' first to create a valid mysql user"; exit 1; }
+test -e db-${ENV-development}.conf || { echo "config file db-${ENV-development}.conf does not exist, 'setup' first to create a valid mysql user"; exit 1; }
 
-source ${ENV-development}-migrations.conf 
+source db-${ENV-development}.conf 
 
 function execute() {
   echo "CONNECT $DATABASE; $1" | mysql -u$MYSQL_USER -p$MYSQL_PASSWD
@@ -24,7 +24,7 @@ fi
 
 MIGRATED_VERSION=$(execute "SELECT version FROM $HELPER_TABLE_NAME WHERE id = 1 \\G" | grep version | sed 's/.*:[ ]*//g')
 
-MAX_MIGRATION=$(ls *.migration 2>/dev/null | sort | tail -n1 | sed 's/0*\([0-9][0-9]*\).*/\1/g')
+MAX_MIGRATION=$(cd migrations; ls *.migration 2>/dev/null | sort | tail -n1 | sed 's/0*\([0-9][0-9]*\).*/\1/g')
 
 test -n "$REQUESTED_VERSION" || REQUESTED_VERSION=$MAX_MIGRATION
 
@@ -35,7 +35,7 @@ then
 fi
 
 function parse_file() {
-  file_name=$1
+  file_name=migrations/$1
 
   up_cmd=$(sed -n '/\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^ migration/,/\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^ migration end/p' $file_name | grep -v '\^\^\^' | tr "\n" " ")
   down_cmd=$(sed -n '/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv undo migration/,/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv undo migration end/p' $file_name | grep -v "vvv" | tr "\n" " ")
@@ -52,12 +52,13 @@ then
   MIGRATED_VERSION=$(( MIGRATED_VERSION + 1 ))
   while [ $MIGRATED_VERSION -le $REQUESTED_VERSION ]
   do
-    MIGRATION_FILE_NAME=$(ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
+    MIGRATION_FILE_NAME=$(cd migrations; ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
     parse_file $MIGRATION_FILE_NAME
     echo -n "executing migration $MIGRATED_VERSION ... "
 
     if execute "$up_cmd" 2>&1 | grep ERROR
     then
+      echo -e "**** Mysql command was:\n\t$up_cmd\n"
       current_migration
       exit 10
     fi
@@ -70,16 +71,18 @@ then
     echo "done"
     MIGRATED_VERSION=$(( $MIGRATED_VERSION + 1 ))
   done
+  current_migration
 elif [ $REQUESTED_VERSION -lt $MIGRATED_VERSION ]
 then
   while [ $MIGRATED_VERSION -gt $REQUESTED_VERSION ]
   do
-    MIGRATION_FILE_NAME=$(ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
+    MIGRATION_FILE_NAME=$(cd migrations; ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
     parse_file $MIGRATION_FILE_NAME
     echo -n "undoing migration $MIGRATED_VERSION ... "
 
     if execute "$down_cmd" 2>&1 | grep ERROR
     then
+      echo -e "**** Mysql command was:\n\t$up_down\n"
       exit 11
     fi
 
@@ -87,6 +90,8 @@ then
     echo "done"
     MIGRATED_VERSION=$(( $MIGRATED_VERSION - 1 ))
   done
+  current_migration
 fi
 
-current_migration
+mkdir -p migrations
+mysqldump -u$MYSQL_USER -p$MYSQL_PASSWD $DATABASE --no-data=true --add-drop-table=false > migrations/db_${ENV-production}.schema
