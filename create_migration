@@ -75,6 +75,29 @@ down:
     DROP INDEX index_foo_address
       ON foo;
 
+**** Rename table (see http://dev.mysql.com/doc/refman/5.0/en/rename-table.html)
+
+up: 
+
+    RENAME TABLE foo TO bar;
+
+down:
+
+    RENAME TABLE bar TO foo;
+
+**** Rename column and change type (see http://dev.mysql.com/doc/refman/5.1/en/alter-table.html)
+
+up:
+
+    ALTER TABLE foo
+      CHANGE address street VARCHAR(1000)
+
+down:
+
+    ALTER TABLE foo
+      CHANGE street address VARCHAR(500)
+
+
 EOF
 
 ${EDITOR-vi} $TMP_FILE
