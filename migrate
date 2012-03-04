@@ -34,6 +34,13 @@ then
   exit 5
 fi
 
+function parse_file() {
+  file_name=$1
+
+  up_cmd=$(sed -n '/\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^ migration/,/\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^ migration end/p' $file_name | grep -v '\^\^\^' | tr "\n" " ")
+  down_cmd=$(sed -n '/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv undo migration/,/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv undo migration end/p' $file_name | grep -v "vvv" | tr "\n" " ")
+}
+
 function current_migration() {
   MIGRATED_VERSION=$(execute "SELECT version FROM $HELPER_TABLE_NAME WHERE id = 1 \\G" | grep version | sed 's/.*:[ ]*//g')
   echo -e "\nCurrent applied migration: $MIGRATED_VERSION\n"
@@ -46,10 +53,10 @@ then
   while [ $MIGRATED_VERSION -le $REQUESTED_VERSION ]
   do
     MIGRATION_FILE_NAME=$(ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
-    . $MIGRATION_FILE_NAME
+    parse_file $MIGRATION_FILE_NAME
     echo -n "executing migration $MIGRATED_VERSION ... "
 
-    if migration_up_$(printf "%04d" $MIGRATED_VERSION) 2>&1 | grep ERROR
+    if execute "$up_cmd" 2>&1 | grep ERROR
     then
       current_migration
       exit 10
@@ -68,10 +75,10 @@ then
   while [ $MIGRATED_VERSION -gt $REQUESTED_VERSION ]
   do
     MIGRATION_FILE_NAME=$(ls $(printf "%04d" $MIGRATED_VERSION)*.migration)  
-    . $MIGRATION_FILE_NAME
+    parse_file $MIGRATION_FILE_NAME
     echo -n "undoing migration $MIGRATED_VERSION ... "
 
-    if migration_down_$(printf "%04d" $MIGRATED_VERSION) 2>&1 | grep ERROR
+    if execute "$down_cmd" 2>&1 | grep ERROR
     then
       exit 11
     fi

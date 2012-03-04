@@ -1,36 +1,72 @@
+if [ $# -ne 1 ]
+then
+  cat <<EOF
+
+Usage: $0 <name_of_the_migration>
+
+EOF
+exit 1
+fi
+
 LATEST=$(ls *.migration 2>/dev/null | sort | tail -n1 | sed 's/0*\([0-9][0-9]*\).*/\1/g')
 test -n "$LATEST" || LATEST=0
 
 CURRENT=$(( $LATEST + 1 ))
 
 NAME=$(printf "%04d-$1.migration" $CURRENT)
+TMP_FILE=$(mktemp /tmp/migration.XXXXXXXXXXX)
 
-cat<<EOF>>$NAME
-
-# put your desired migration in this function
-function migration_up_$(printf "%04d" $CURRENT)() {
-  execute "CREATE TABLE foo (id INT PRIMARY KEY, name VARCHAR(255))"
-  execute "ALTER TABLE foo ADD COLUMN address VARCHAR(500);"
-}
-
-# put your counter migration in this function -- opposite order
-function migration_down_$(printf "%04d" $CURRENT)() {
-  execute "ALTER TABLE foo DROP COLUMN address;"
-  execute "DROP TABLE foo;"
-}
-
-# examples:
-# up:   execute "CREATE TABLE foo (id INT PRIMARY KEY, name VARCHAR(255)"
-# down: execute "DROP TABLE foo"
-#
-# up:   execute "ALTER TABLE foo ADD COLUMN address VARCHAR(500);"
-# down: execute "ALTER TABLE foo DROP COLUMN address;"
+cat<<EOF>>$TMP_FILE
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ migration
 
 
-# resources:
-# http://dev.mysql.com/doc/refman/5.1/en/create-table.html 
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ migration end
 
+
+vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv undo migration
+
+
+vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv undo migration end
+
+
+
+********************************************************************************************
+
+* Put your mysql commands for this migration between '^^.. up' and '^^.. up end'
+* Put your mysql commands for undoing this migration between 'vv.. down' and 'vv.. down end'
+* Commands can stretch multiple lines
+
+
+Examples:
+
+**** Create new table (see http://dev.mysql.com/doc/refman/5.1/en/create-table.html)
+
+up:   
+
+    CREATE TABLE foo (
+      id INT PRIMARY KEY, 
+      name VARCHAR(255)
+    );
+
+down: 
+
+    DROP TABLE foo
+
+
+**** Add new column to table:
+up:   
+
+    ALTER TABLE foo 
+        ADD COLUMN address VARCHAR(500);
+
+down: 
+    
+    ALTER TABLE foo DROP COLUMN address;
 
 EOF
 
-${EDITOR-vi} $NAME
+${EDITOR-vi} $TMP_FILE
+
+sed -n '/\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^\^ migration/,/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv undo migration end/p' $TMP_FILE > $NAME
+
+echo Successfully create migration $NAME
