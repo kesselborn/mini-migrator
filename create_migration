@@ -44,8 +44,11 @@ Examples:
 up:   
 
     CREATE TABLE foo (
-      id INT PRIMARY KEY, 
-      name VARCHAR(255)
+      id INT PRIMARY KEY NOT NULL AUTO_INCREMENT, 
+      username VARCHAR(31) NOT NULL,
+      first_name VARCHAR(255),
+      last_name VARCHAR(255),
+      avatar_url VARCHAR(511)
     );
 
 down: 
