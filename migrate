@@ -94,4 +94,4 @@ then
 fi
 
 mkdir -p schemas-and-migrations
-mysqldump -u$MYSQL_USER -p$MYSQL_PASSWD $DATABASE --no-data=true --add-drop-table=false > schemas-and-migrations/db_${ENV-production}.schema
+mysqldump -u$MYSQL_USER -p$MYSQL_PASSWD $DATABASE --no-data=true --add-drop-table=false > schemas-and-migrations/db_${ENV-development}.schema

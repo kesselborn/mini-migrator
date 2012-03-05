@@ -100,6 +100,26 @@ down:
     ALTER TABLE foo
       CHANGE street address VARCHAR(500)
 
+**** Foreign keys:
+
+up:
+
+    CREATE TABLE transactions_categories (
+      id INT PRIMARY KEY NOT NULL AUTO_INCREMENT, 
+      transaction_id INT,
+      categories_id INT,
+      FOREIGN KEY (transaction_id) REFERENCES transactions(id),
+      FOREIGN KEY (categories_id) REFERENCES categories(id)
+        ON DELETE CASCADE,
+
+      paid_amount DECIMAL(10,2),
+      used_amount DECIMAL(10,2)
+
+    );
+
+down:
+
+    DROP TABLE transactions_categories;
 
 EOF
 
