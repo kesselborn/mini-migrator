@@ -11,7 +11,7 @@ function execute() {
   echo "CONNECT $DATABASE; $1" | mysql -u$MYSQL_USER -p$MYSQL_PASSWD
 }
 
-echo "CREATE DATABASE IF NOT EXISTS $DATABASE;" | mysql -u$MYSQL_USER -p$MYSQL_PASSWD
+echo "CREATE DATABASE IF NOT EXISTS $DATABASE  DEFAULT CHARACTER SET utf8 DEFAULT COLLATE utf8_general_ci;" | mysql -u$MYSQL_USER -p$MYSQL_PASSWD
 execute "CREATE TABLE IF NOT EXISTS $HELPER_TABLE_NAME ( id INT, version INT );"
 
 COUNT=$(execute "select count(*) from migration_counter \\G" | grep count | sed 's/.*:[ ]*//g') || exit 3
