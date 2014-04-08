@@ -1,3 +1,5 @@
+set -e
+
 function usage {
   local command=$(basename $0)
 
@@ -54,7 +56,7 @@ test -n "$admin_password" && PASS_ARGS="-p$password"
 if [ -z "$skip_user_creation" ]
 then
 
-cat<<EOF | mysql -u$admin_user $PASS_ARGS
+cat<<EOF | mysql -u$admin_user $PASS_ARGS || { echo "Error setting up user -- wrong or missing password?"; false; }
 
     CREATE USER '$user'@'localhost' IDENTIFIED BY '$password';
     GRANT ALL PRIVILEGES ON *.* TO '$user'@'localhost'
